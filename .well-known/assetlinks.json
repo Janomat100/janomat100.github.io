@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "io.github.janomat100.quizfabrik",
+    "sha256_cert_fingerprints": ["8F:4E:72:80:FC:7F:78:33:E6:15:45:31:7D:45:43:DF:41:23:BE:2D:5F:EA:AF:15:60:2B:1B:82:26:EB:90:6D"]
+  }
+}]
