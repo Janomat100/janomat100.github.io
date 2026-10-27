@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quizfabrik</title>
+<script>
+  // Hell/Dunkel ganz früh setzen, damit beim Laden nichts aufblitzt (ohne gespeicherte Wahl: wie das System)
+  try {
+    var t = localStorage.getItem('quizfabrik-theme');
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) { /* ohne Speicher gilt Automatisch */ }
+</script>
+<link rel="icon" href="favicon.ico">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2A4FD8">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="brand">
+    <div class="brand-top">
+      <h1><span class="hl">Quiz</span>fabrik</h1>
+      <button class="theme-toggle" id="theme-toggle" type="button">
+        <span class="theme-icon" id="theme-icon"></span><span class="theme-label" id="theme-label">Automatisch</span>
+      </button>
+    </div>
+    <p>Teste dein IT-Wissen oder bau dein eigenes Quiz: mit einer richtigen Antwort, mehreren richtigen oder wahr/falsch.</p>
+  </header>
+
+  <!-- Übersicht -->
+  <main class="screen" id="home">
+    <p class="form-msg" id="home-msg" role="status" hidden></p>
+    <!-- Begrüßung und Statistik -->
+    <section class="panel stack hello" id="hello" aria-labelledby="hello-title">
+      <div>
+        <h2 class="hello-title" id="hello-title">Hallo!</h2>
+        <p class="hello-text" id="hello-text"></p>
+      </div>
+      <ul class="stats" id="stats" hidden>
+        <li class="stat"><span class="stat-icon" data-icon="spiele"></span><span class="stat-num" id="stat-spiele">0</span><span class="stat-label">gespielte Quizze</span></li>
+        <li class="stat"><span class="stat-icon" data-icon="richtig"></span><span class="stat-num" id="stat-richtig">0</span><span class="stat-label">richtige Antworten</span></li>
+        <li class="stat"><span class="stat-icon" data-icon="fehler"></span><span class="stat-num" id="stat-fehler">0</span><span class="stat-label">Fragen im Fehler-Speicher</span></li>
+      </ul>
+      <div class="first-play" id="first-play" hidden>
+        <span class="first-icon" data-icon="start"></span>
+        <p><strong>Spiel dein erstes Quiz!</strong> Danach siehst du hier, wie viele Quizze du gespielt und wie viele Fragen du richtig beantwortet hast. Tipp: Der IT-Mix mischt Fragen aus allen Kategorien, ein guter Start.</p>
+      </div>
+      <button class="link-btn" id="stats-reset" type="button" hidden>Statistik zurücksetzen</button>
+    </section>
+    <section class="panel stack mix-panel" id="mix-panel" data-kat="mix" aria-labelledby="mix-title" hidden>
+      <div class="panel-head">
+        <span class="kat-icon" data-icon="mix"></span>
+        <div>
+          <h2 class="section-title" id="mix-title">Alles gemischt spielen</h2>
+          <p class="quiz-meta" id="mix-meta"></p>
+        </div>
+      </div>
+      <p>Der IT-Mix zieht Fragen aus allen fertigen IT-Quizzen, gleichmäßig verteilt. Bei jeder Frage steht, aus welcher Kategorie sie kommt.</p>
+      <div class="card-progress" id="mix-progress">
+        <span class="card-stats" id="mix-stats"></span>
+        <span class="bar" aria-hidden="true"><span class="bar-fill" id="mix-bar"></span></span>
+        <span class="bar-text" id="mix-bar-text"></span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="mix-start" type="button">IT-Mix spielen</button>
+      </div>
+    </section>
+    <section class="panel stack" id="err-panel" aria-labelledby="err-title" hidden>
+      <h2 class="section-title" id="err-title">Deine Fehler</h2>
+      <p class="empty" id="err-empty">Noch keine Fehler gespeichert. Jede Frage, die du falsch beantwortest, landet hier. So kannst du sie später gezielt üben.</p>
+      <ul class="cards" id="err-list"></ul>
+      <p class="hint" id="err-hint" hidden>Beantwortest du eine Frage richtig, egal in welchem Quiz, verschwindet sie aus deinen Fehlern.</p>
+    </section>
+    <section class="panel stack" aria-labelledby="std-title">
+      <h2 class="section-title" id="std-title">Fertige Quizze</h2>
+      <p class="empty" id="std-empty" hidden>Du hast alle fertigen Quizze gelöscht.</p>
+      <ul class="cards" id="std-list"></ul>
+      <button class="btn btn-ghost btn-small" id="restore" type="button" hidden>Gelöschte fertige Quizze zurückholen</button>
+    </section>
+    <section class="panel stack" aria-labelledby="own-title">
+      <div class="section-head">
+        <h2 class="section-title" id="own-title">Deine Quizze</h2>
+        <button class="btn btn-primary" id="create" type="button">+ Neues Quiz</button>
+      </div>
+      <p class="empty" id="own-empty">Du hast noch keine eigenen Quizze. Klick auf „Neues Quiz“ und schreib deine eigenen Fragen, zum Beispiel zum Lernen für die nächste Arbeit.</p>
+      <ul class="cards" id="own-list"></ul>
+    </section>
+  </main>
+
+  <!-- Einstellungen vor dem Spiel -->
+  <section class="panel stack screen" id="setup" hidden aria-labelledby="setup-title">
+    <div class="panel-head">
+      <span class="kat-icon" id="setup-icon"></span>
+      <div>
+        <p class="eyebrow">Einstellungen</p>
+        <h2 class="section-title" id="setup-title"></h2>
+        <p class="quiz-meta" id="setup-meta"></p>
+      </div>
+    </div>
+      <div class="settings">
+        <fieldset class="seg">
+          <legend class="field-label">Wie viele Fragen pro Spiel?</legend>
+          <div class="seg-row">
+            <input type="radio" name="anzahl" id="a10" value="10" checked><label for="a10">10</label>
+            <input type="radio" name="anzahl" id="a20" value="20"><label for="a20">20</label>
+            <input type="radio" name="anzahl" id="a30" value="30"><label for="a30">30</label>
+            <input type="radio" name="anzahl" id="a50" value="50"><label for="a50">50</label>
+            <input type="radio" name="anzahl" id="a100" value="100"><label for="a100">100</label>
+          </div>
+        </fieldset>
+        <fieldset class="seg">
+          <legend class="field-label">Zeit pro Frage?</legend>
+          <div class="seg-row">
+            <input type="radio" name="zeit" id="z0" value="0" checked><label for="z0">Aus</label>
+            <input type="radio" name="zeit" id="z10" value="10"><label for="z10">10 s</label>
+            <input type="radio" name="zeit" id="z20" value="20"><label for="z20">20 s</label>
+            <input type="radio" name="zeit" id="z30" value="30"><label for="z30">30 s</label>
+          </div>
+        </fieldset>
+        <fieldset class="seg">
+          <legend class="field-label">Schwierigkeit</legend>
+          <div class="seg-row chips checks">
+            <input type="checkbox" name="filter-stufe" id="fs-leicht" value="leicht" checked><label for="fs-leicht">leicht</label>
+            <input type="checkbox" name="filter-stufe" id="fs-mittel" value="mittel" checked><label for="fs-mittel">mittel</label>
+            <input type="checkbox" name="filter-stufe" id="fs-schwer" value="schwer" checked><label for="fs-schwer">schwer</label>
+          </div>
+        </fieldset>
+        <fieldset class="seg">
+          <legend class="field-label">Fragearten</legend>
+          <div class="seg-row chips checks">
+            <input type="checkbox" name="filter-art" id="fa-eine" value="eine" checked><label for="fa-eine">Eine richtige Antwort</label>
+            <input type="checkbox" name="filter-art" id="fa-mehrere" value="mehrere" checked><label for="fa-mehrere">Mehrere richtige Antworten</label>
+            <input type="checkbox" name="filter-art" id="fa-wahrfalsch" value="wahrfalsch" checked><label for="fa-wahrfalsch">Wahr oder falsch</label>
+          </div>
+        </fieldset>
+        <fieldset class="seg" id="setup-geloest">
+          <legend class="field-label">Schon gelöste Fragen</legend>
+          <div class="seg-row chips checks">
+            <input type="checkbox" id="alle-fragen"><label for="alle-fragen">Alle Fragen</label>
+          </div>
+        </fieldset>
+      </div>
+      <p class="hint">Die Fragen werden zufällig gezogen, nur aus den gewählten Schwierigkeiten und Fragearten. Fragen, die du schon einmal richtig beantwortet hast, kommen nicht mehr dran – außer du setzt das Häkchen bei „Alle Fragen“ (gilt nur für dieses Spiel). Passen weniger Fragen, kommen alle passenden dran. Mit Zeitlimit zählt eine Frage als falsch, wenn die Zeit um ist.</p>
+      <div class="setup-count-row">
+        <p class="setup-count" id="setup-count" role="status"></p>
+        <button class="btn btn-ghost btn-small" id="setup-alle" type="button" hidden>Alle Fragen spielen</button>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="setup-start" type="button">Quiz starten</button>
+        <button class="btn btn-ghost" id="setup-back" type="button">Zurück</button>
+      </div>
+      <p class="hint">Tastatur: Enter startet, Esc geht zurück.</p>
+  </section>
+
+  <!-- Quiz erstellen oder bearbeiten -->
+  <section class="panel screen" id="editor" hidden aria-labelledby="ed-heading">
+    <form class="stack" id="ed-form" novalidate>
+      <h2 class="section-title" id="ed-heading">Neues Quiz</h2>
+      <div class="field">
+        <label class="field-label" for="ed-name">Titel</label>
+        <input class="text-in" id="ed-name" type="text" maxlength="80" autocomplete="off" placeholder="z. B. Englisch-Vokabeln Unit 3">
+      </div>
+      <fieldset class="seg">
+        <legend>Schwierigkeit des Quiz (Standard für neue Fragen)</legend>
+        <div class="seg-row">
+          <input type="radio" name="ed-stufe" id="e-leicht" value="leicht"><label for="e-leicht">leicht</label>
+          <input type="radio" name="ed-stufe" id="e-mittel" value="mittel" checked><label for="e-mittel">mittel</label>
+          <input type="radio" name="ed-stufe" id="e-schwer" value="schwer"><label for="e-schwer">schwer</label>
+        </div>
+      </fieldset>
+      <p class="hint">Wähl bei jeder Frage die Art: eine richtige Antwort, mehrere richtige Antworten oder wahr/falsch. Klick dann auf die Buchstaben vor den richtigen Antworten, sie werden grün. Die Erklärung ist freiwillig.</p>
+      <div class="ed-list" id="ed-questions"></div>
+      <button class="btn btn-ghost" id="ed-add" type="button">+ Frage hinzufügen</button>
+      <p class="form-msg" id="ed-msg" role="status" hidden></p>
+      <div class="actions">
+        <button class="btn btn-primary" id="ed-save" type="submit">Speichern</button>
+        <button class="btn btn-ghost" id="ed-cancel" type="button">Abbrechen</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Spielen -->
+  <section class="panel quiz screen" id="quiz" hidden aria-labelledby="quiz-title">
+    <button class="btn btn-ghost btn-small" id="back" type="button">← Zur Übersicht</button>
+    <div class="quiz-head">
+      <span class="kat-icon" id="quiz-icon"></span>
+      <div class="quiz-name">
+        <span class="badge" id="badge" hidden></span>
+        <h2 id="quiz-title"></h2>
+        <p class="quiz-meta" id="quiz-meta"></p>
+      </div>
+      <div class="score" aria-label="Punkte">
+        <span id="score-num">0</span>
+        <span class="score-label">Punkte</span>
+      </div>
+    </div>
+    <ol class="steps" id="steps" aria-hidden="true"></ol>
+
+    <div id="play">
+      <div class="timer" id="timer" hidden>
+        <div class="timer-bar"><span class="timer-fill" id="timer-fill"></span></div>
+        <span class="timer-num" id="timer-num" role="timer"></span>
+      </div>
+      <p class="counter" id="counter"></p>
+      <h3 class="question" id="question" tabindex="-1"></h3>
+      <p class="hint" id="art-hint" hidden>Mehrere Antworten können richtig sein. Wähl alle richtigen aus und klick dann auf „Prüfen“.</p>
+      <div class="answers" id="answers"></div>
+      <div class="actions" id="check-row" hidden>
+        <button class="btn btn-primary" id="check" type="button" disabled>Prüfen</button>
+      </div>
+      <div class="feedback" id="feedback" hidden>
+        <p class="feedback-title" id="fb-title"></p>
+        <p class="feedback-text" id="fb-text"></p>
+        <div class="actions">
+          <button class="btn btn-primary" id="next" type="button">Nächste Frage</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="result" hidden>
+      <div class="result-top">
+        <div class="ring" id="ring" role="img">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+            <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <span class="ring-num" aria-hidden="true"><span id="res-pct">0</span><small>%</small></span>
+        </div>
+        <div class="result-text">
+          <p class="eyebrow">Ergebnis</p>
+          <p class="result-score"><span id="res-num">0</span><span class="res-of"> von <span id="res-total">0</span> richtig</span></p>
+          <p class="result-msg" id="res-msg"></p>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="practice" type="button" hidden>Fehler üben</button>
+        <button class="btn btn-ghost" id="replay" type="button">Noch mal spielen</button>
+        <button class="btn btn-ghost" id="other" type="button">Anderes Quiz</button>
+      </div>
+      <h3 class="review-title">Alle Fragen im Überblick</h3>
+      <ol class="review" id="review"></ol>
+    </div>
+  </section>
+
+  <p class="foot">Tipp: Beim Spielen kannst du auch die Tasten 1 bis 4 oder A bis D drücken, bei Wahr/Falsch auch W und F.</p>
+</div>
+
+<!-- Vorlage für eine Frage im Editor -->
+<template id="tpl-question">
+  <fieldset class="ed-q">
+    <legend class="ed-q-num">Frage</legend>
+    <fieldset class="seg ed-art">
+      <legend>Art der Frage</legend>
+      <div class="seg-row chips"></div>
+    </fieldset>
+    <fieldset class="seg ed-qstufe">
+      <legend>Schwierigkeit der Frage</legend>
+      <div class="seg-row chips"></div>
+    </fieldset>
+    <label class="ed-label"><span class="ed-frage-label">Frage</span>
+      <textarea class="text-in ed-frage" rows="2" maxlength="300" placeholder="Was möchtest du fragen?"></textarea>
+    </label>
+    <p class="hint ed-art-hint"></p>
+    <div class="ed-answers"></div>
+    <fieldset class="seg ed-wf" hidden>
+      <legend>Die Aussage ist …</legend>
+      <div class="seg-row"></div>
+    </fieldset>
+    <label class="ed-label">Erklärung (freiwillig)
+      <input class="text-in ed-erkl" type="text" maxlength="500" placeholder="Warum ist die richtige Antwort richtig?">
+    </label>
+    <button class="btn btn-ghost btn-small ed-remove" type="button">Frage löschen</button>
+  </fieldset>
+</template>
+
+<script src="quizze-daten.js"></script>
+<script src="lokal-api.js"></script>
+<script src="app.js"></script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
+</body>
+</html>
